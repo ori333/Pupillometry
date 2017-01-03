@@ -1,6 +1,7 @@
 import numpy as np
 import cv2  #add OpenCV Library
 import argparse
+import math
 import matplotlib.pyplot as plt
 
 img = cv2.imread('test.png',0)
@@ -29,17 +30,40 @@ _, contours, _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 cv2.drawContours(imgColor, contours, 4, (0,255,0), 3)
 cv2.circle(imgColor,(i[0],i[1]),2,(0,0,255),3)
 
+#print contours[4]
 
-#Find angle and distance from center of circle and contour
+#Find distance from center of circle and contour
+Csize, _ , _ = contours[4].shape
+radius = np.empty(Csize)
+index = 0
+for n in contours[4]:
+	dx = i[0]-n[0][0]
+	dy = i[1]-n[0][1]
+	radius[index] = math.sqrt( dx**2 + dy**2 )
+	index += 1
+
+
+#Find angle from center of circle and contour
+rads = np.empty(Csize)
+index = 0
+for n in contours[4]:
+	dx = i[0]-n[0][0]
+	dy = i[1]-n[0][1]
+	rads[index] = math.atan2(dy,dx)
+	index += 1
+
+#print rads
+
 
 #Countours output array of arrays
-
 cv2.imshow('original image',imgColor)
 cv2.imshow('detected circles',cimg)
 
-#plt.plot(contours[4])
-#plt.ylabel('some numbers')
-#plt.show()
+
+plt.plot(rads,radius,'ro')
+plt.ylabel('radius (pixels)')
+plt.xlabel('angle (radians)')
+plt.show()
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
