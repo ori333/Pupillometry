@@ -3,13 +3,23 @@ import cv2  #add OpenCV Library
 import argparse
 import math
 import matplotlib.pyplot as plt
+import os
+import sys
 
-img = cv2.imread('test.png',0)
-imgColor = cv2.imread('test.png',1)
+# #add sub directory /IR_Photos
+
+# fileDir = os.path.dirname(os.path.realpath('__file__')) #curent file directory
+# IRPhotosDir = fileDir + '\IR_Photos'
+
+# #change directory for videos
+# os.chdir(IRPhotosDir)
+
+img = cv2.imread('aeval1.bmp',0)
+imgColor = cv2.imread('aeval1.bmp',1)
 img = cv2.medianBlur(img,5)
 cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
 
-circles = cv2.HoughCircles(img,cv2.HOUGH_GRADIENT,1,100, circles=2, param1=50,param2=40,minRadius=100,maxRadius=150)
+circles = cv2.HoughCircles(img,cv2.HOUGH_GRADIENT,1,100, circles=2, param1=50,param2=40,minRadius=20,maxRadius=150)
 
 circles = np.uint16(np.around(circles))
 for i in circles[0,:]:
@@ -21,22 +31,22 @@ for i in circles[0,:]:
 
 #Find contour
 imgray = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
-ret,thresh = cv2.threshold(imgray,65,255,0)
-#cv2.imshow('threshold',thresh)
+ret,thresh = cv2.threshold(imgray,40,255,0)
+cv2.imshow('threshold',thresh)
 
 #find the iris contour
 #4 for this image
 _, contours, _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-cv2.drawContours(imgColor, contours, 4, (0,255,0), 3)
+cv2.drawContours(imgColor, contours, 18, (0,255,0), 3)
 cv2.circle(imgColor,(i[0],i[1]),2,(0,0,255),3)
 
 #print contours[4]
 
 #Find distance from center of circle and contour
-Csize, _ , _ = contours[4].shape
+Csize, _ , _ = contours[18].shape
 radius = np.empty(Csize)
 index = 0
-for n in contours[4]:
+for n in contours[18]:
 	dx = i[0]-n[0][0]
 	dy = i[1]-n[0][1]
 	radius[index] = math.sqrt( dx**2 + dy**2 )
@@ -46,7 +56,7 @@ for n in contours[4]:
 #Find angle from center of circle and contour
 rads = np.empty(Csize)
 index = 0
-for n in contours[4]:
+for n in contours[18]:
 	dx = i[0]-n[0][0]
 	dy = i[1]-n[0][1]
 	rads[index] = math.atan2(dy,dx)
@@ -58,7 +68,7 @@ for n in contours[4]:
 #Countours output array of arrays
 cv2.imshow('original image',imgColor)
 cv2.imshow('detected circles',cimg)
-
+cv2.imwrite('results.png', cimg)
 
 plt.plot(rads,radius,'ro')
 plt.ylabel('radius (pixels)')
