@@ -3,6 +3,7 @@ import cv2  #add OpenCV Library
 import argparse
 import math
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import os
 import sys
 
@@ -14,105 +15,83 @@ videosDir = fileDir + '\Videos'
 #change directory for videos
 os.chdir(videosDir)
 
-cap = cv2.VideoCapture('IR_eye_video.mp4')
-
-w = cap.get(3)
-h = cap.get(4)
+cap = cv2.VideoCapture('MVI_0077_clipped.mp4')
 
 while(cap.isOpened()):
-	ret, frame = cap.read()
+	ret, imgColor = cap.read()
 	if ret==True:
+		img = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
+		img = cv2.medianBlur(img,5)
+		cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
 
-		frame = cv2.cvtColor(frame,cv2.COLOR_RGB2GRAY)
-		faces = cv2.CascadeClassifier('haarcascade_eye.xml')
-		detected = faces.detectMultiScale(frame, 1.3, 0, minSize=(100,100))#detected = faces.detectMultiScale(frame, 1.3, 5)
-
-		pupilFrame = frame
-		pupilO = frame
-		windowClose = np.ones((5,5),np.uint8)
-		windowOpen = np.ones((2,2),np.uint8)
-		windowErode = np.ones((2,2),np.uint8)
-
-		#draw square
-		for (x,y,w,h) in detected:
-			cv2.rectangle(frame, (x,y), ((x+w),(y+h)),(0,0,255),1)
-			cv2.line(frame, (x,y), ((x+w,y+h)),(0,0,255),1)
-			cv2.line(frame, (x+w,y), ((x,y+h)), (0,0,255),1)			
-
-			
-			pupilFrame = cv2.equalizeHist(frame[y+(h*.25):(y+h), x:(x+w)])
-			
-			pupilO = pupilFrame
-			ret, pupilFrame = cv2.threshold(pupilFrame,55,255,cv2.THRESH_BINARY)		#50 ..nothin 70 is better
-			pupilFrame = cv2.morphologyEx(pupilFrame, cv2.MORPH_CLOSE, windowClose)
-			pupilFrame = cv2.morphologyEx(pupilFrame, cv2.MORPH_ERODE, windowErode)
-			pupilFrame = cv2.morphologyEx(pupilFrame, cv2.MORPH_OPEN, windowOpen)
-
-			#so above we do image processing to get the pupil..
-			#now we find the biggest blob and get the centriod
-
-			# cv2.imshow('frameVal',frame[y+(h*.25):(y+h), x:(x+w)])
-			# while(True):
-			# 	if cv2.waitKey(1) & 0xFF == ord('n'):
-			# 		break			
-
-			threshold = cv2.inRange(pupilFrame,250,255)		#get the blobs
-			_,contours, hierarchy = cv2.findContours(threshold,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-			
-			#if there are 3 or more blobs, delete the biggest and delete the left most for the right eye
-			#if there are 2 blob, take the second largest
-			#if there are 1 or less blobs, do nothing
-			
-			# if len(contours) >= 2:
-			# 	#find biggest blob
-			# 	maxArea = 0
-			# 	MAindex = 0			#to get the unwanted frame 
-			# 	distanceX = []		#delete the left most (for right eye)
-			# 	currentIndex = 0 
-			# 	for cnt in contours:
-			# 		area = cv2.contourArea(cnt)
-			# 		center = cv2.moments(cnt)
-			# 		cx,cy = int(center['m10']/center['m00']), int(center['m01']/center['m00'])
-			# 		distanceX.append(cx)	
-			# 		if area > maxArea:
-			# 			maxArea = area
-			# 			MAindex = currentIndex
-			# 		currentIndex = currentIndex + 1
-		
-			# 	del contours[MAindex]		#remove the picture frame contour
-			# 	del distanceX[MAindex]
-			
-			# eye = 'right'
-
-			# if len(contours) >= 2:		#delete the left most blob for right eye
-			# 	if eye == 'right':
-			# 		edgeOfEye = distanceX.index(min(distanceX))
-			# 	else:
-			# 		edgeOfEye = distanceX.index(max(distanceX))	
-			# 	del contours[edgeOfEye]
-			# 	del distanceX[edgeOfEye]
-
-			# if len(contours) >= 1:		#get largest blob
-			# 	maxArea = 0
-			# 	for cnt in contours:
-			# 		area = cv2.contourArea(cnt)
-			# 		if area > maxArea:
-			# 			maxArea = area
-			# 			largeBlob = cnt
-					
-			# if len(largeBlob) > 0:	
-			# 	center = cv2.moments(largeBlob)
-			# 	cx,cy = int(center['m10']/center['m00']), int(center['m01']/center['m00'])
-			# 	cv2.circle(pupilO,(cx,cy),5,255,-1)
-	
-		#show picture
-		cv2.imshow('frame',pupilO)
-		cv2.imshow('frame2',pupilFrame)
+		#Find contour
+		imgray = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
+		ret,thresh = cv2.threshold(imgray,40,255,0)
+		cv2.imshow('threshold',thresh)
 
 
-		# while(True):
-		# 	if cv2.waitKey(1) & 0xFF == ord('n'):
-		# 		break			
+		circles = cv2.HoughCircles(thresh,cv2.HOUGH_GRADIENT,1,100, circles=2, param1=1,param2=10,minRadius=50,maxRadius=140)
+
+		if circles != None:
+			circles = np.uint16(np.around(circles))
+
+			for i in circles[0,:]:
+			    # draw the outer circle
+			    cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
+			    # draw the center of the circle
+			    cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
+
+			#find the iris contour
+			#4 for this image
+			_, contours, _ = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+			lastContour = np.empty(contours[1].shape)
+			for contour in contours:
+				if cv2.contourArea(contour) > 10000:
+					cv2.drawContours(imgColor, contour, -1, (0,255,0), 3)
+					lastContour = contour
+					# cv2.circle(imgColor,(i[0],i[1]),2,(0,0,255),3)
+
+		#print contour
+
+		#Find distance from center of contour and contour
+		Csize, _ , _ = lastContour.shape
+		radius = np.empty(Csize)
+		index = 0
+		M=cv2.moments(lastContour)
+		centroid_x = int(M['m10']/M['m00'])
+		centroid_y = int(M['m01']/M['m00'])
+		for n in lastContour:
+			dx = centroid_x-n[0][0]
+			dy = centroid_y-n[0][1]
+			radius[index] = math.sqrt( dx**2 + dy**2 )
+			index += 1
+
+
+		#Find angle from center of circle and contour
+		rads = np.empty(Csize)
+		index = 0
+		for n in lastContour:
+			dx = centroid_x-n[0][0]
+			dy = centroid_y-n[0][1]
+			rads[index] = math.atan2(dy,dx)
+			index += 1
+
+		# #print rads
+
+
+		#Countours output array of arrays
+		cv2.imshow('original image',imgColor)
+		#cv2.imshow('detected circles',cimg)
+
+		plt.ion()
+		plt.clf()
+		plt.axis([-4,4,0,200])
+		plt.plot(rads,radius,'ro')
+		plt.ylabel('radius (pixels)')
+		plt.xlabel('angle (radians)')
+		plt.show()
+		plt.pause(0.05)
+
 
 
 		if cv2.waitKey(1) & 0xFF == ord('q'):
