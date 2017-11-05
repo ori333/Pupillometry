@@ -26,6 +26,7 @@ while(cap.isOpened()):
 		#Find contour
 		imgray = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
 		ret,thresh = cv2.threshold(imgray,100,255,0)
+		cv2.waitKey(0)
 		# cv2.imshow('threshold',thresh)
 		#cv2.imshow('gray',imgray)
 
