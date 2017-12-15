@@ -7,13 +7,31 @@ import matplotlib.animation as animation
 import os
 import sys, getopt
 
-initThresh = 55 #Initial Threshold Value
-pupilMin = 2000
-pupilMax = 50000
+initThresh = 150 #Initial Threshold Value
+pupilMin = 600
+pupilMax = 600000
 
 #pupilContour
 #input: color image, graysacle theshold, minimum pupil size, maximum pupil size
+#output contour
+def pupilContour(imgColor,threshold):
+	#Find contour
+	imgray = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
+	ret,threshImg = cv2.threshold(imgray,initThresh,255,0)
+	cv2.imshow('threshold',threshImg)
+	#cv2.imshow('gray',imgray)
 
+	cv2.waitKey(0) #TODO: make this a flag
+
+	#find the iris contour
+	#for this image
+	_, contours, _ = cv2.findContours(threshImg,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+	lastContour = np.empty(contours[1].shape)
+	for contour in contours:
+		if cv2.contourArea(contour) > pupilMin and cv2.contourArea(contour) < pupilMax:
+			cv2.drawContours(imgColor, contour, -1, (0,255,0), 3)
+			lastContour = contour
+	return lastContour
 
 #Pupillometry
 #input: string of source file
@@ -41,57 +59,22 @@ def pupillometry(srcFile):
 				time = cap.get(cv2.CAP_PROP_POS_MSEC)
 				# cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
 
-				try:
-					#Find contour
-					imgray = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
-					ret,threshImg = cv2.threshold(imgray,initThresh,255,0)
-					cv2.imshow('threshold',threshImg)
-					#cv2.imshow('gray',imgray)
+				for i in xrange(0,20,5):
+					try:
+						# #Find contour
+						lastContour = pupilContour(imgColor,initThresh + i)
 
-					# cv2.waitKey(0) TODO: make this a flag
+						#cv2.imshow('with contours',imgColor)
 
-					#find the iris contour
-					#for this image
-					_, contours, _ = cv2.findContours(threshImg,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-					lastContour = np.empty(contours[1].shape)
-					for contour in contours:
-						if cv2.contourArea(contour) > pupilMin and cv2.contourArea(contour) < pupilMax:
-							cv2.drawContours(imgColor, contour, -1, (0,255,0), 3)
-							lastContour = contour
+						#Find distance from center of contour and contour
+						Csize, _ , _ = lastContour.shape
+						radius = np.empty(Csize)
+						M=cv2.moments(lastContour)
+						break #exit loop
+					except cv2.error as e:
+						print('try again')
 
-					#cv2.imshow('with contours',imgColor)
-
-					#Find distance from center of contour and contour
-					Csize, _ , _ = lastContour.shape
-					radius = np.empty(Csize)
-					index = 0
-					M=cv2.moments(lastContour)
-				except cv2.error as e:
-					#Find contour
-					imgray = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
-					ret,threshImg = cv2.threshold(imgray,initThresh+5,255,0)
-					cv2.imshow('threshold',threshImg)
-					#cv2.imshow('gray',imgray)
-
-					#cv2.waitKey(0)
-
-					#find the iris contour
-					#4 for this image
-					_, contours, _ = cv2.findContours(threshImg,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-					lastContour = np.empty(contours[1].shape)
-					for contour in contours:
-						if cv2.contourArea(contour) > pupilMin and cv2.contourArea(contour) < pupilMax:
-							cv2.drawContours(imgColor, contour, -1, (0,255,0), 3)
-							lastContour = contour
-
-					#cv2.imshow('with contours',imgColor)
-
-					#Find distance from center of contour and contour
-					Csize, _ , _ = lastContour.shape
-					radius = np.empty(Csize)
-					index = 0
-					M=cv2.moments(lastContour)
-
+				index = 0
 				centroid_x = int(M['m10']/M['m00'])
 				centroid_y = int(M['m01']/M['m00'])
 				cv2.circle(imgColor,(centroid_x,centroid_y), 5, (0,0,255), -1)
@@ -121,6 +104,7 @@ def pupillometry(srcFile):
 				csvdata.write('\n')
 
 				#Countours output array of arrays
+				imgray = cv2.cvtColor(imgColor,cv2.COLOR_BGR2GRAY)
 				imgColorSmall = cv2.resize(imgColor, (0,0), fx=0.5, fy=0.5)
 				imgraySmall = cv2.resize(imgray,(0,0), fx=0.5, fy=0.5)
 				cv2.imshow('original image',imgColorSmall)
